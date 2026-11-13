@@ -49,7 +49,7 @@ class VaultCloud(private val context: Context) {
     suspend fun configureAndSignIn(email: String, password: String, apiKey: String, signUp: Boolean): String =
         withContext(Dispatchers.IO) {
             require(email.isNotBlank() && password.length >= 6) { "Enter a valid email and password (at least 6 characters)." }
-            require(apiKey.startsWith("sb_publishable_") || apiKey.length > 30) { "Enter your Supabase publishable key." }
+            require(apiKey.startsWith("sb_publishable_")) { "Use the Supabase publishable key (sb_publishable_...). Never paste a secret/service-role key." }
             VaultSession.put(context, mapOf("api_key" to apiKey))
             val endpoint = if (signUp) "/auth/v1/signup" else "/auth/v1/token?grant_type=password"
             val response = request(endpoint, "POST", JSONObject().put("email", email).put("password", password), null)

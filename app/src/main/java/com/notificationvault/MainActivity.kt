@@ -55,8 +55,26 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onEnableAccess = { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-                    onDelete = { id -> lifecycleScope.launch { dao.deleteById(id) } },
-                    onClear = { lifecycleScope.launch { dao.clearAll() } }
+                    onDelete = { id ->
+                        lifecycleScope.launch {
+                            try {
+                                if (cloudSignedIn) VaultCloud(applicationContext).deleteNotification(id)
+                                dao.deleteById(id)
+                            } catch (error: Exception) {
+                                cloudMessage = "Could not delete from cloud: ${error.message.orEmpty()}"
+                            }
+                        }
+                    },
+                    onClear = {
+                        lifecycleScope.launch {
+                            try {
+                                if (cloudSignedIn) VaultCloud(applicationContext).clearNotifications()
+                                dao.clearAll()
+                            } catch (error: Exception) {
+                                cloudMessage = "Could not clear cloud archive: ${error.message.orEmpty()}"
+                            }
+                        }
+                    }
                 )
             }
         }

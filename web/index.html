@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>Notification Vault · Web</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#121d2e;--line:#26364d;--muted:#91a2b9;--text:#edf4ff;--accent:#69d5b1}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#172941 0,var(--bg) 55%);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+header{max-width:1100px;margin:auto;padding:25px 22px;display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;border-radius:14px;background:#193c45;display:grid;place-items:center;color:var(--accent);font-size:23px}h1{font-size:20px;margin:0}header p{margin:3px 0 0;color:var(--muted);font-size:13px}
+main{max-width:1100px;margin:25px auto;padding:0 22px 50px}.panel{background:#111c2dcc;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 18px 50px #0003}.auth{max-width:470px;margin:45px auto}.sub{color:var(--muted);line-height:1.5}label{display:block;font-size:13px;color:#b7c5d8;margin:14px 0 6px}input{width:100%;background:#0b1422;color:var(--text);border:1px solid #30445e;border-radius:10px;padding:12px;font:inherit;outline:none}input:focus{border-color:var(--accent)}button{border:0;border-radius:10px;padding:11px 16px;background:var(--accent);color:#09251e;font-weight:700;cursor:pointer}button.secondary{background:#20334a;color:var(--text);border:1px solid #354a64}button:disabled{opacity:.55;cursor:wait}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.error{color:#ff9a9a;margin-top:12px;white-space:pre-wrap}.hidden{display:none!important}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin:5px 0 18px}.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{background:#14243a;border:1px solid var(--line);padding:13px 17px;border-radius:13px;min-width:135px}.stat strong{display:block;font-size:22px}.stat span{font-size:12px;color:var(--muted)}.filters{display:flex;gap:10px;flex:1;min-width:220px}.filters input{max-width:420px}.feed{display:grid;gap:10px}.item{padding:15px 17px;border:1px solid var(--line);background:#101a29;border-radius:13px}.itemtop{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:12px}.app{color:var(--accent);font-weight:650}.item h3{font-size:15px;margin:9px 0 5px}.item p{margin:0;color:#c4d0df;white-space:pre-wrap;overflow-wrap:anywhere}.empty{text-align:center;color:var(--muted);padding:45px 10px}.foot{color:var(--muted);font-size:12px;margin-top:18px;line-height:1.5}
+@media(max-width:600px){header{padding:18px}main{margin:10px auto;padding:0 13px 35px}.panel{padding:16px}.auth{margin:25px auto}.filters{width:100%}.filters input{max-width:none}}
+</style></head>
+<body>
+<header><div class="logo">◈</div><div><h1>Notification Vault</h1><p>Your notification history, available anywhere</p></div></header>
+<main>
+<section id="auth" class="panel auth"><h2>Sign in to your vault</h2><p class="sub">Use the same email and password as the Android app. Your history is private to your account.</p>
+<label for="email">Email</label><input id="email" type="email" autocomplete="username" placeholder="you@example.com">
+<label for="password">Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Your password">
+<label for="key">Supabase publishable key</label><input id="key" autocomplete="off" placeholder="sb_publishable_…">
+<div class="actions"><button id="login">Sign in</button></div><div id="authError" class="error"></div>
+<p class="foot">Project URL is preconfigured. Use only the Supabase publishable key, never a secret or service-role key. Email confirmation must be completed if enabled.</p></section>
+<section id="vault" class="hidden">
+<div class="toolbar"><div><h2 style="margin:0">Notification history</h2><p class="sub" style="margin:5px 0 0">Synced records from your connected devices</p></div><div class="actions" style="margin:0"><button class="secondary" id="refresh">↻ Refresh</button><button class="secondary" id="logout">Sign out</button></div></div>
+<div class="stats"><div class="stat"><strong id="total">0</strong><span>Notifications loaded</span></div><div class="stat"><strong id="devices">—</strong><span>Devices represented</span></div></div>
+<div class="toolbar" style="margin-top:18px"><div class="filters"><input id="search" placeholder="Search app, title or message…"></div><span id="status" class="sub">Loading…</span></div>
+<div id="feed" class="feed"><div class="empty">Loading your notification history…</div></div>
+<div class="actions" style="justify-content:center"><button class="secondary" id="more">Load older notifications</button></div>
+<p class="foot">Only notifications uploaded from a phone will appear here. The source phone must have Notification Access enabled and internet connectivity for sync. This page uses your signed-in session and Supabase row-level security.</p>
+</section>
+</main>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const URL='https://qijinaxofwfxwcbvsvjl.supabase.co';
+const $=id=>document.getElementById(id);
+let supabase=null, rows=[], offset=0, busy=false, user=null;
+function showVault(){ $('auth').classList.add('hidden'); $('vault').classList.remove('hidden'); }
+function showAuth(){ $('vault').classList.add('hidden'); $('auth').classList.remove('hidden'); }
+function esc(v=''){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function render(){const q=$('search').value.trim().toLowerCase();const filtered=rows.filter(r=>[r.app_name,r.package_name,r.title,r.body].join(' ').toLowerCase().includes(q));$('total').textContent=rows.length;$('devices').textContent=new Set(rows.map(r=>r.device_id).filter(Boolean)).size||'—';$('feed').innerHTML=filtered.length?filtered.map(r=>'<article class="item"><div class="itemtop"><span class="app">'+esc(r.app_name||r.package_name)+'</span><time>'+esc(new Date(r.posted_at).toLocaleString())+'</time></div>'+(r.title?'<h3>'+esc(r.title)+'</h3>':'')+'<p>'+esc(r.body||'')+'</p></article>').join(''):'<div class="empty">No matching notifications found.</div>'; }
+async function load(reset=false){if(busy)return;busy=true;$('refresh').disabled=true;$('more').disabled=true;$('status').textContent='Syncing…';if(reset){rows=[];offset=0;}try{const {data,error}=await supabase.from('notifications').select('id,device_id,package_name,app_name,title,body,posted_at').order('posted_at',{ascending:false}).range(offset,offset+99);if(error)throw error;rows=reset?data:[...rows,...data];offset+=data.length;render();$('status').textContent=rows.length+' loaded';$('more').classList.toggle('hidden',data.length<100);}catch(e){$('status').textContent='Could not load';$('feed').innerHTML='<div class="empty">'+esc(e.message)+'</div>';}finally{busy=false;$('refresh').disabled=false;$('more').disabled=false;}}
+$('login').onclick=async()=>{ $('authError').textContent='';$('login').disabled=true;try{const email=$('email').value.trim(),password=$('password').value,key=$('key').value.trim();if(!email||!password||!key.startsWith('sb_publishable_'))throw Error('Enter your email, password and Supabase publishable key (sb_publishable_…).');localStorage.setItem('nv_publishable_key',key);supabase=createClient(URL,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;user=data.user;showVault();await load(true);}catch(e){$('authError').textContent=e.message;}finally{$('login').disabled=false;}};
+$('refresh').onclick=()=>load(true);$('more').onclick=()=>load(false);$('search').oninput=render;
+$('logout').onclick=async()=>{if(supabase)await supabase.auth.signOut();rows=[];showAuth();};
+const saved=localStorage.getItem('nv_publishable_key');if(saved)$('key').value=saved;
+if(saved){try{supabase=createClient(URL,saved,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await supabase.auth.getSession();if(data.session){user=data.session.user;showVault();await load(true);}}catch(e){$('authError').textContent=e.message;}}
+</script></body></html>

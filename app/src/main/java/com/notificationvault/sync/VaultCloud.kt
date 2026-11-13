@@ -83,7 +83,8 @@ class VaultCloud(private val context: Context) {
             }
             request("/rest/v1/notifications?on_conflict=id", "POST", payload, access, key, mapOf("Prefer" to "resolution=ignore-duplicates,return=minimal"))
         }
-        val remote = request("/rest/v1/notifications?select=id,package_name,app_name,title,body,posted_at&order=posted_at.desc&limit=1000", "GET", null, access, key)
+        val remoteResponse = request("/rest/v1/notifications?select=id,package_name,app_name,title,body,posted_at&order=posted_at.desc&limit=1000", "GET", null, access, key)
+        val remote = remoteResponse.optJSONArray("rows") ?: JSONArray()
         val merged = mutableListOf<NotificationRecord>()
         for (i in 0 until remote.length()) {
             val item = remote.getJSONObject(i)
@@ -120,15 +121,6 @@ class VaultCloud(private val context: Context) {
         saveSession(result)
         return result.getString("access_token")
     }
-
-    private fun request(
-        path: String,
-        method: String,
-        body: org.json.JSONTokener?,
-        token: String?,
-        apiKeyOverride: String? = null,
-        extraHeaders: Map<String, String> = emptyMap()
-    ): JSONObject = error("Internal request overload unavailable")
 
     private fun request(
         path: String,

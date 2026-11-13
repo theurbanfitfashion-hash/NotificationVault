@@ -58,12 +58,7 @@ fun VaultScreen(
                     selected = page == VaultPage.HISTORY,
                     onClick = { page = VaultPage.HISTORY },
                     icon = { Icon(Icons.Default.History, contentDescription = null) },
-                    label = { Text("History") },
-                    badge = {
-                        if (records.isNotEmpty()) {
-                            Badge { Text(if (records.size > 99) "99+" else records.size.toString()) }
-                        }
-                    }
+                    label = { Text("History") }
                 )
             }
         }

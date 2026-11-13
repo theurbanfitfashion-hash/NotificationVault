@@ -24,5 +24,8 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
+          name: notificationvault-dashboard-pages
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: notificationvault-dashboard-pages

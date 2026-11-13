@@ -30,5 +30,7 @@ create policy "Users can delete their own notifications"
 on public.notifications for delete to authenticated
 using ((select auth.uid()) = user_id);
 
+grant select, insert, update, delete on public.notifications to authenticated;
+
 create index if not exists notifications_user_posted_at_idx
 on public.notifications (user_id, posted_at desc);

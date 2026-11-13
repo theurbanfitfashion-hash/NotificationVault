@@ -83,7 +83,7 @@ class VaultCloud(private val context: Context) {
             }
             request("/rest/v1/notifications?on_conflict=id", "POST", payload, access, key, mapOf("Prefer" to "resolution=ignore-duplicates,return=minimal"))
         }
-        val remoteResponse = request("/rest/v1/notifications?select=id,package_name,app_name,title,body,posted_at&order=posted_at.desc&limit=1000", "GET", null, access, key)
+        val remoteResponse = request("/rest/v1/notifications?select=id,package_name,app_name,title,body,posted_at&order=posted_at.desc&limit=1000", "GET", null as JSONObject?, access, key)
         val remote = remoteResponse.optJSONArray("rows") ?: JSONArray()
         val merged = mutableListOf<NotificationRecord>()
         for (i in 0 until remote.length()) {

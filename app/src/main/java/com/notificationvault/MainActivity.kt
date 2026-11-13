@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SyncScheduler.schedule(this)
+        if (!VaultSession.get(this, "access_token").isNullOrBlank()) SyncScheduler.syncNow(this)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 val dao = remember { VaultDatabase.get(applicationContext).notificationDao() }

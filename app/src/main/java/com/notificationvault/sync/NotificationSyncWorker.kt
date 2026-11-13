@@ -4,24 +4,27 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.notificationvault.data.VaultDatabase
+import java.io.IOException
 
-/**
- * Cloud upload is intentionally gated until authenticated Supabase sign-in
- * and token refresh are implemented. Never embed service_role in this app.
- */
 class NotificationSyncWorker(
     appContext: Context,
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
-        val prefs = applicationContext.getSharedPreferences("vault_cloud", Context.MODE_PRIVATE)
-        val url = prefs.getString("supabase_url", null)
-        val key = prefs.getString("publishable_key", null)
-        val accessToken = prefs.getString("access_token", null)
-        if (url.isNullOrBlank() || key.isNullOrBlank() || accessToken.isNullOrBlank()) {
-            return Result.success()
+        if (VaultSession.get(applicationContext, "access_token").isNullOrBlank()) return Result.success()
+        return try {
+            val dao = VaultDatabase.get(applicationContext).notificationDao()
+            val pending = dao.pendingSync()
+            val cloudRecords = VaultCloud(applicationContext).sync(pending)
+            if (pending.isNotEmpty()) dao.markSynced(pending.map { it.id })
+            if (cloudRecords.isNotEmpty()) dao.insertAll(cloudRecords)
+            Result.success()
+        } catch (error: IOException) {
+            Result.retry()
+        } catch (error: Exception) {
+            val message = error.message.orEmpty()
+            if (message.contains("expired", true) || message.contains("sign in", true)) Result.failure()
+            else Result.retry()
         }
-        val pending = VaultDatabase.get(applicationContext).notificationDao().pendingSync()
-        return if (pending.isEmpty()) Result.success() else Result.retry()
     }
 }

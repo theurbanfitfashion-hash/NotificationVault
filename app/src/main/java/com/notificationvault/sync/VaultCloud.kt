@@ -55,7 +55,7 @@ class VaultCloud(private val context: Context) {
             val response = request(endpoint, "POST", JSONObject().put("email", email).put("password", password), null)
             val access = response.optString("access_token")
             if (access.isBlank()) {
-                if (signUp && response.has("id")) "Account created. Check your email if confirmation is enabled, then sign in."
+                if (signUp && (response.has("id") || response.has("user"))) "Account created. Check your email if confirmation is enabled, then sign in."
                 else throw IllegalStateException(response.optString("msg", response.optString("message", "Authentication failed.")))
             } else {
                 saveSession(response)
@@ -84,21 +84,29 @@ class VaultCloud(private val context: Context) {
             }
             request("/rest/v1/notifications?on_conflict=id", "POST", payload, access, key, mapOf("Prefer" to "resolution=ignore-duplicates,return=minimal"))
         }
-        val remoteResponse = request("/rest/v1/notifications?select=id,package_name,app_name,title,body,posted_at&order=posted_at.desc&limit=1000", "GET", null as JSONObject?, access, key)
-        val remote = remoteResponse.optJSONArray("rows") ?: JSONArray()
         val merged = mutableListOf<NotificationRecord>()
-        for (i in 0 until remote.length()) {
-            val item = remote.getJSONObject(i)
-            val time = try { java.time.Instant.parse(item.getString("posted_at")).toEpochMilli() } catch (_: Exception) { System.currentTimeMillis() }
-            merged += NotificationRecord(
-                id = item.getString("id"),
-                packageName = item.optString("package_name"),
-                appName = item.optString("app_name"),
-                title = item.optString("title"),
-                body = item.optString("body"),
-                postedAt = time,
-                synced = true
+        var offset = 0
+        while (true) {
+            val pageResponse = request(
+                "/rest/v1/notifications?select=id,package_name,app_name,title,body,posted_at&order=posted_at.desc&limit=1000&offset=$offset",
+                "GET", null as JSONObject?, access, key
             )
+            val page = pageResponse.optJSONArray("rows") ?: JSONArray()
+            for (i in 0 until page.length()) {
+                val item = page.getJSONObject(i)
+                val time = try { java.time.Instant.parse(item.getString("posted_at")).toEpochMilli() } catch (_: Exception) { System.currentTimeMillis() }
+                merged += NotificationRecord(
+                    id = item.getString("id"),
+                    packageName = item.optString("package_name"),
+                    appName = item.optString("app_name"),
+                    title = item.optString("title"),
+                    body = item.optString("body"),
+                    postedAt = time,
+                    synced = true
+                )
+            }
+            if (page.length() < 1000) break
+            offset += 1000
         }
         merged
     }
@@ -106,7 +114,7 @@ class VaultCloud(private val context: Context) {
     private fun saveSession(json: JSONObject) {
         val values = mutableMapOf(
             "access_token" to json.getString("access_token"),
-            "user_id" to json.optJSONObject("user")?.optString("id").orEmpty(),
+            "user_id" to (json.optJSONObject("user")?.optString("id") ?: VaultSession.get(context, "user_id").orEmpty()),
             "refresh_token" to json.getString("refresh_token"),
             "expires_at" to (System.currentTimeMillis() + json.optLong("expires_in", 3600) * 1000L).toString()
         )

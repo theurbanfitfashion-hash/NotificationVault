@@ -7,6 +7,7 @@ import android.service.notification.StatusBarNotification
 import com.notificationvault.data.NotificationRecord
 import com.notificationvault.data.VaultDatabase
 import com.notificationvault.sync.SyncScheduler
+import com.notificationvault.sync.VaultSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,8 +32,13 @@ class VaultNotificationListener : NotificationListenerService() {
             sbn.packageName
         }
 
+        // Android reuses StatusBarNotification.key when it updates an existing
+        // notification. Scope the ID to this device to keep other phones separate.
+        val stableKey = "${VaultSession.deviceId(applicationContext)}|${sbn.key}"
+        val stableId = UUID.nameUUIDFromBytes(stableKey.toByteArray(Charsets.UTF_8)).toString()
+
         val record = NotificationRecord(
-            id = UUID.randomUUID().toString(),
+            id = stableId,
             packageName = sbn.packageName,
             appName = appName,
             title = title,
@@ -40,6 +46,7 @@ class VaultNotificationListener : NotificationListenerService() {
             postedAt = sbn.postTime
         )
         scope.launch {
+            // Room REPLACE updates the existing row for this notification key.
             VaultDatabase.get(applicationContext).notificationDao().insert(record)
             SyncScheduler.syncNow(applicationContext)
         }

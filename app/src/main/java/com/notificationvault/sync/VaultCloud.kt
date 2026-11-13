@@ -74,6 +74,7 @@ class VaultCloud(private val context: Context) {
             records.forEach { r ->
                 payload.put(JSONObject()
                     .put("id", r.id)
+                    .put("user_id", VaultSession.get(context, "user_id"))
                     .put("device_id", device)
                     .put("package_name", r.packageName)
                     .put("app_name", r.appName)
@@ -105,6 +106,7 @@ class VaultCloud(private val context: Context) {
     private fun saveSession(json: JSONObject) {
         val values = mutableMapOf(
             "access_token" to json.getString("access_token"),
+            "user_id" to json.optJSONObject("user")?.optString("id").orEmpty(),
             "refresh_token" to json.getString("refresh_token"),
             "expires_at" to (System.currentTimeMillis() + json.optLong("expires_in", 3600) * 1000L).toString()
         )

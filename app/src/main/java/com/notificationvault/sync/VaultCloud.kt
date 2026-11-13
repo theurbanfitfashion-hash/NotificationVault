@@ -65,6 +65,18 @@ class VaultCloud(private val context: Context) {
 
     suspend fun signOut() = withContext(Dispatchers.IO) { VaultSession.clear(context) }
 
+    suspend fun deleteNotification(id: String) = withContext(Dispatchers.IO) {
+        val access = validAccessToken()
+        val key = VaultSession.get(context, "api_key") ?: error("Supabase key is missing.")
+        execute("/rest/v1/notifications?id=eq.$id", "DELETE", null, access, key, mapOf("Prefer" to "return=minimal"))
+    }
+
+    suspend fun clearNotifications() = withContext(Dispatchers.IO) {
+        val access = validAccessToken()
+        val key = VaultSession.get(context, "api_key") ?: error("Supabase key is missing.")
+        execute("/rest/v1/notifications?id=not.is.null", "DELETE", null, access, key, mapOf("Prefer" to "return=minimal"))
+    }
+
     suspend fun sync(records: List<NotificationRecord>): List<NotificationRecord> = withContext(Dispatchers.IO) {
         val access = validAccessToken()
         val key = VaultSession.get(context, "api_key") ?: error("Supabase key is missing. Sign in again.")
@@ -161,6 +173,7 @@ class VaultCloud(private val context: Context) {
         when (method) {
             "POST" -> builder.post(requestBody ?: ByteArray(0).toRequestBody(jsonType))
             "GET" -> builder.get()
+            "DELETE" -> builder.delete(requestBody)
             else -> error("Unsupported request")
         }
         client.newCall(builder.build()).execute().use { response ->

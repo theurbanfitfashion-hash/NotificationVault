@@ -94,7 +94,7 @@ class VaultCloud(private val context: Context) {
                     .put("body", r.body)
                     .put("posted_at", java.time.Instant.ofEpochMilli(r.postedAt).toString()))
             }
-            request("/rest/v1/notifications?on_conflict=id", "POST", payload, access, key, mapOf("Prefer" to "resolution=ignore-duplicates,return=minimal"))
+            request("/rest/v1/notifications?on_conflict=id", "POST", payload, access, key, mapOf("Prefer" to "resolution=merge-duplicates,return=minimal"))
         }
         val merged = mutableListOf<NotificationRecord>()
         var offset = 0

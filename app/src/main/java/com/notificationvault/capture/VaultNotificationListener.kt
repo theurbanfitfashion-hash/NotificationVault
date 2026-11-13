@@ -6,6 +6,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.notificationvault.data.NotificationRecord
 import com.notificationvault.data.VaultDatabase
+import com.notificationvault.sync.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,6 +41,7 @@ class VaultNotificationListener : NotificationListenerService() {
         )
         scope.launch {
             VaultDatabase.get(applicationContext).notificationDao().insert(record)
+            SyncScheduler.syncNow(applicationContext)
         }
     }
 }

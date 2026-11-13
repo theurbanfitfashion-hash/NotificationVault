@@ -15,7 +15,7 @@ object SyncScheduler {
         val request = OneTimeWorkRequestBuilder<NotificationSyncWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        WorkManager.getInstance(context).enqueueUniqueWork("notification-vault-sync-now", ExistingWorkPolicy.KEEP, request)
+        WorkManager.getInstance(context).enqueueUniqueWork("notification-vault-sync-now", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
     fun schedule(context: Context) {
